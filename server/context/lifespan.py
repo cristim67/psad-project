@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 
+from config.logger import logger
 from config.settings import CLEANUP_INTERVAL_MINUTES
 from database.db import cleanup_old_data, init_db
 
@@ -15,7 +16,7 @@ async def periodic_cleanup():
         except asyncio.CancelledError:
             break
         except Exception as e:
-            print(f"  ⚠️  Cleanup task error: {e}")
+            logger.error(f"Cleanup task error: {e}", exc_info=True)
 
 
 @asynccontextmanager
@@ -24,22 +25,22 @@ async def lifespan(app):
     Manage application lifespan (startup and shutdown).
     """
     # Startup
-    print("🚀 Starting application...")
+    logger.info("Starting application...")
     
     # Initialize database
     await init_db()
-    print("✅ Database initialized")
+    logger.info("Database initialized")
     
     # Start background tasks
     cleanup_task = asyncio.create_task(periodic_cleanup())
-    print(f"✅ Cleanup task started (every {CLEANUP_INTERVAL_MINUTES} minutes)")
+    logger.info(f"Cleanup task started (every {CLEANUP_INTERVAL_MINUTES} minutes)")
     
-    print("✅ Application started successfully")
+    logger.info("Application started successfully")
     
     yield  # Application is running
     
     # Shutdown
-    print("🛑 Shutting down application...")
+    logger.info("Shutting down application...")
     
     # Cancel background tasks
     cleanup_task.cancel()
@@ -48,5 +49,5 @@ async def lifespan(app):
     except asyncio.CancelledError:
         pass
     
-    print("✅ Application shut down successfully")
+    logger.info("Application shut down successfully")
 

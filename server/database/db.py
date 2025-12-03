@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import aiosqlite
+from config.logger import logger
 from config.settings import DB_PATH
 
 
@@ -46,9 +47,9 @@ async def save_sensor_data_batch(data_list: list[dict]):
                 ) for d in data_list
             ])
             await db.commit()
-        print(f"  💾 Saved {len(data_list)} messages to SQLite")
+        logger.info(f"Saved {len(data_list)} messages to SQLite")
     except Exception as e:
-        print(f"  ⚠️  SQLite save error: {e}")
+        logger.error(f"SQLite save error: {e}", exc_info=True)
 
 
 async def get_total_records() -> int:
@@ -59,7 +60,7 @@ async def get_total_records() -> int:
             row = await cursor.fetchone()
             return row[0] if row else 0
     except Exception as e:
-        print(f"  ⚠️  Query error: {e}")
+        logger.error(f"Query error: {e}", exc_info=True)
         return 0
 
 
@@ -80,9 +81,9 @@ async def cleanup_old_data(minutes: int = 10):
             await db.commit()
             
         if deleted_count > 0:
-            print(f"  🗑️  Deleted {deleted_count} old records (older than {minutes} minutes)")
+            logger.info(f"Deleted {deleted_count} old records (older than {minutes} minutes)")
         return deleted_count
     except Exception as e:
-        print(f"  ⚠️  Cleanup error: {e}")
+        logger.error(f"Cleanup error: {e}", exc_info=True)
         return 0
 

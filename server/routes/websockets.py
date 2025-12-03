@@ -3,6 +3,7 @@ import asyncio
 import json
 from datetime import datetime
 
+from config.logger import logger
 from config.settings import (
     DASHBOARD_INITIAL_DATA_COUNT,
     FLUSH_INTERVAL_SECONDS,
@@ -27,11 +28,11 @@ async def websocket_arduino(websocket: WebSocket):
     Receives data from Arduino and saves it + sends to dashboards.
     """
     client_host = websocket.client.host if websocket.client else "Unknown"
-    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🔌 Arduino connection from {client_host}")
+    logger.info(f"Arduino connection attempt from {client_host}")
     
     try:
         await websocket.accept()
-        print(f"  ✅ Arduino CONNECTED from {client_host}")
+        logger.info(f"Arduino CONNECTED from {client_host}")
         await websocket.send_text('{"status":"connected","message":"Welcome!"}')
         
         # Task for periodic flush of SQLite buffer (non-blocking)
@@ -46,7 +47,7 @@ async def websocket_arduino(websocket: WebSocket):
         try:
             while True:
                 data = await websocket.receive_text()
-                print(f"  📨 Received from Arduino: {data}")
+                logger.info(f"Received from Arduino [{client_host}]: {data}")
                 
                 try:
                     data_json = json.loads(data)
@@ -61,7 +62,7 @@ async def websocket_arduino(websocket: WebSocket):
                     await broadcast_to_dashboards(json.dumps(data_json))
                     
                 except json.JSONDecodeError:
-                    print(f"  ⚠️  Invalid JSON message: {data}")
+                    logger.warning(f"Invalid JSON message from {client_host}: {data}")
                 
                 # Echo response
                 await websocket.send_text(f"Echo: {data}")
@@ -74,11 +75,9 @@ async def websocket_arduino(websocket: WebSocket):
                 asyncio.create_task(flush_sqlite_buffer())
             
     except WebSocketDisconnect:
-        print(f"  ❌ Arduino DISCONNECTED from {client_host}")
+        logger.info(f"Arduino DISCONNECTED from {client_host}")
     except Exception as e:
-        print(f"  ⚠️ WebSocket ERROR: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"WebSocket ERROR from {client_host}: {type(e).__name__}: {e}", exc_info=True)
 
 
 @router.websocket("/ws-dashboard")
@@ -88,12 +87,12 @@ async def websocket_dashboard(websocket: WebSocket):
     Receives real-time updates from Arduino.
     """
     client_host = websocket.client.host if websocket.client else "Unknown"
-    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 📊 Dashboard connection from {client_host}")
+    logger.info(f"Dashboard connection attempt from {client_host}")
     
     try:
         await websocket.accept()
         add_connection(websocket)
-        print(f"  ✅ Dashboard CONNECTED from {client_host} (Total: {get_connection_count()})")
+        logger.info(f"Dashboard CONNECTED from {client_host} (Total: {get_connection_count()})")
         
         # Send latest available data immediately
         latest = get_latest_data(DASHBOARD_INITIAL_DATA_COUNT)
@@ -108,7 +107,7 @@ async def websocket_dashboard(websocket: WebSocket):
         while True:
             try:
                 data = await websocket.receive_text()
-                print(f"  📥 Received from Dashboard: {data}")
+                logger.info(f"Received from Dashboard [{client_host}]: {data}")
                 
                 # Here you can process commands from dashboard
                 # (e.g., send command to Arduino through another channel)
@@ -117,10 +116,10 @@ async def websocket_dashboard(websocket: WebSocket):
                 break
                 
     except WebSocketDisconnect:
-        print(f"  ❌ Dashboard DISCONNECTED from {client_host}")
+        logger.info(f"Dashboard DISCONNECTED from {client_host}")
     except Exception as e:
-        print(f"  ⚠️ Dashboard ERROR: {type(e).__name__}: {e}")
+        logger.error(f"Dashboard ERROR from {client_host}: {type(e).__name__}: {e}", exc_info=True)
     finally:
         remove_connection(websocket)
-        print(f"  📊 Active dashboards: {get_connection_count()}")
+        logger.info(f"Active dashboards: {get_connection_count()}")
 
