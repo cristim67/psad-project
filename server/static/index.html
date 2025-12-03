@@ -335,7 +335,7 @@
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, width, height);
 
-            // Draw grid
+            // Draw grid (center line)
             ctx.strokeStyle = '#003300';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -344,25 +344,30 @@
             ctx.stroke();
 
             // Draw waveform
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
+            if (waveformData.length > 1) {
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
 
-            const pointWidth = width / waveformData.length;
-            waveformData.forEach((value, index) => {
-                const x = index * pointWidth;
-                // Normalize value to -1 to 1 range, then scale to canvas
-                const normalized = (value / 100) * 2 - 1; // Convert 0-100 to -1 to 1
-                const y = centerY + (normalized * (height / 2 - 10));
+                const pointWidth = width / (waveformData.length - 1);
+                waveformData.forEach((value, index) => {
+                    const x = index * pointWidth;
+                    // Normalize volume (0-100) to canvas height
+                    // Map 0-100 to bottom-top of canvas (with padding)
+                    const padding = 10;
+                    const usableHeight = height - (padding * 2);
+                    const normalized = value / 100; // 0 to 1
+                    const y = height - padding - (normalized * usableHeight);
 
-                if (index === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            });
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
 
-            ctx.stroke();
+                ctx.stroke();
+            }
         }
 
         function connectWebSocket() {
@@ -381,9 +386,15 @@
                 const message = JSON.parse(event.data);
 
                 if (message.type === 'initial_data') {
-                    message.data.forEach(data => processData(data));
+                    // Filter only Arduino data
+                    message.data
+                        .filter(data => data.source === 'arduino' || data.source === 'microphone')
+                        .forEach(data => processData(data));
                 } else {
-                    processData(message);
+                    // Only process Arduino data
+                    if (message.source === 'arduino' || message.source === 'microphone') {
+                        processData(message);
+                    }
                 }
             };
 
@@ -402,6 +413,11 @@
         }
 
         function processData(data) {
+            // Only process Arduino data
+            if (data.source !== 'arduino' && data.source !== 'microphone') {
+                return;
+            }
+
             // Update cards
             if (data.volume !== undefined) {
                 document.getElementById('volume').textContent = data.volume;
@@ -410,8 +426,8 @@
                 document.getElementById('peakToPeak').textContent = data.peakToPeak;
             }
 
-            // Update waveform
-            if (data.volume !== undefined) {
+            // Update waveform using volume (0-100 scale)
+            if (data.volume !== undefined && data.volume !== null) {
                 waveformData.push(data.volume);
                 if (waveformData.length > maxWaveformPoints) {
                     waveformData.shift();
@@ -424,17 +440,10 @@
             document.getElementById('lastUpdate').textContent =
                 timestamp.toLocaleTimeString('ro-RO');
 
-            // Update source
+            // Update source (only Arduino)
             const sourceText = document.getElementById('sourceText');
-            if (data.source === 'laptop_microphone') {
-                sourceText.textContent = 'Laptop Microphone';
-                sourceText.className = 'source-laptop';
-            } else if (data.source === 'microphone' || data.source === 'arduino') {
-                sourceText.textContent = 'Arduino Microphone';
-                sourceText.className = 'source-arduino';
-            } else {
-                sourceText.textContent = data.source || 'Unknown';
-            }
+            sourceText.textContent = 'Arduino';
+            sourceText.className = 'source-arduino';
 
             // Add to history
             dataHistory.unshift(data);
@@ -448,22 +457,26 @@
         function updateTable() {
             const tbody = document.getElementById('dataTableBody');
 
-            if (dataHistory.length === 0) {
+            // Filter only Arduino data
+            const arduinoData = dataHistory.filter(data =>
+                data.source === 'arduino' || data.source === 'microphone'
+            );
+
+            if (arduinoData.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="4" style="text-align: center; color: #00aa00;">
-                            Aștept date audio...
+                            Aștept date de la Arduino...
                         </td>
                     </tr>
                 `;
                 return;
             }
 
-            tbody.innerHTML = dataHistory.map(data => {
+            tbody.innerHTML = arduinoData.map(data => {
                 const timestamp = new Date(data.timestamp || Date.now());
-                const source = data.source === 'laptop_microphone' ? 'Laptop' :
-                    (data.source === 'microphone' || data.source === 'arduino' ? 'Arduino' : data.source || 'Unknown');
-                const sourceClass = data.source === 'laptop_microphone' ? 'source-laptop' : 'source-arduino';
+                const source = 'Arduino';
+                const sourceClass = 'source-arduino';
 
                 return `
                     <tr>

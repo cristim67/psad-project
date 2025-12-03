@@ -89,7 +89,8 @@ async def websocket_arduino(websocket: WebSocket):
                                 set_arduino_connection(websocket)
                     else:
                         # Default to arduino if no source specified
-                        data_json["source"] = "arduino"
+                        if "source" not in data_json:
+                            data_json["source"] = "arduino"
                         if is_arduino_connection is None:
                             is_arduino_connection = True
                             set_arduino_connection(websocket)
