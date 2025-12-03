@@ -46,6 +46,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         break;
 
     case WStype_TEXT:
+    {
         // Parse JSON with raw audio data from server
         // Format: {"source":"laptop_microphone","audio_data":"base64...","format":"int16","channels":1,"rate":44100,"chunk_size":1024,"timestamp":Z}
         String message = String((char *)payload);
@@ -119,6 +120,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
             }
         }
         break;
+    }
 
     case WStype_DISCONNECTED:
         Serial.println("❌ WebSocket disconnected!");
