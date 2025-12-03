@@ -6,8 +6,6 @@ import sys
 import time
 
 try:
-    import base64
-
     import pyaudio
     import websockets
 except ImportError as e:
@@ -86,17 +84,17 @@ class MicrophoneClient:
             return False
     
     async def send_audio_data(self, audio_data: bytes, timestamp: int):
-        """Send raw audio data to server via WebSocket"""
+        """Send raw audio data to server via WebSocket (no base64 encoding)"""
         if not self.websocket:
             return False
         
-        # Encode audio data as base64 for JSON transmission
-        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+        # Convert bytes to array of integers (more efficient than base64)
+        audio_array = list(audio_data)
         
-        # JSON format with raw audio data
+        # JSON format with raw audio data as array
         message = {
             "source": "laptop_microphone",
-            "audio_data": audio_base64,
+            "audio_data": audio_array,  # Direct bytes array, no base64
             "format": "int16",
             "channels": self.CHANNELS,
             "rate": self.RATE,

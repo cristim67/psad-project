@@ -308,6 +308,8 @@
         let waveformData = [];
         const maxWaveformPoints = 100;
         let canvas, ctx;
+        let animationFrameId = null;
+        let needsRedraw = false;
 
         // Initialize canvas
         function initCanvas() {
@@ -327,47 +329,55 @@
         function drawWaveform() {
             if (!ctx || waveformData.length === 0) return;
 
-            const width = canvas.width;
-            const height = canvas.height;
-            const centerY = height / 2;
-
-            // Clear canvas
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, width, height);
-
-            // Draw grid (center line)
-            ctx.strokeStyle = '#003300';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(0, centerY);
-            ctx.lineTo(width, centerY);
-            ctx.stroke();
-
-            // Draw waveform
-            if (waveformData.length > 1) {
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-
-                const pointWidth = width / (waveformData.length - 1);
-                waveformData.forEach((value, index) => {
-                    const x = index * pointWidth;
-                    // Normalize volume (0-100) to canvas height
-                    // Map 0-100 to bottom-top of canvas (with padding)
-                    const padding = 10;
-                    const usableHeight = height - (padding * 2);
-                    const normalized = value / 100; // 0 to 1
-                    const y = height - padding - (normalized * usableHeight);
-
-                    if (index === 0) {
-                        ctx.moveTo(x, y);
-                    } else {
-                        ctx.lineTo(x, y);
-                    }
-                });
-
-                ctx.stroke();
+            // Use requestAnimationFrame for smooth rendering
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
             }
+
+            animationFrameId = requestAnimationFrame(() => {
+                const width = canvas.width;
+                const height = canvas.height;
+                const centerY = height / 2;
+
+                // Clear canvas
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, width, height);
+
+                // Draw grid (center line)
+                ctx.strokeStyle = '#003300';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(width, centerY);
+                ctx.stroke();
+
+                // Draw waveform
+                if (waveformData.length > 1) {
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+
+                    const pointWidth = width / (waveformData.length - 1);
+                    waveformData.forEach((value, index) => {
+                        const x = index * pointWidth;
+                        // Normalize volume (0-100) to canvas height
+                        // Map 0-100 to bottom-top of canvas (with padding)
+                        const padding = 10;
+                        const usableHeight = height - (padding * 2);
+                        const normalized = value / 100; // 0 to 1
+                        const y = height - padding - (normalized * usableHeight);
+
+                        if (index === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    });
+
+                    ctx.stroke();
+                }
+                needsRedraw = false;
+            });
         }
 
         function connectWebSocket() {
@@ -408,7 +418,8 @@
                 console.log('❌ Deconectat de la WebSocket');
                 updateStatus(false);
                 updateRecording(false);
-                setTimeout(connectWebSocket, 3000);
+                // Reconectare imediată fără delay
+                connectWebSocket();
             };
         }
 
@@ -432,7 +443,8 @@
                 if (waveformData.length > maxWaveformPoints) {
                     waveformData.shift();
                 }
-                drawWaveform();
+                needsRedraw = true;
+                drawWaveform(); // Will use requestAnimationFrame internally
             }
 
             // Update timestamp

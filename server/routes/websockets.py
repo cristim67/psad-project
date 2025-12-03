@@ -4,11 +4,7 @@ import json
 from datetime import datetime
 
 from config.logger import logger
-from config.settings import (
-    DASHBOARD_INITIAL_DATA_COUNT,
-    FLUSH_INTERVAL_SECONDS,
-    SQLITE_BUFFER_SIZE,
-)
+from config.settings import DASHBOARD_INITIAL_DATA_COUNT, SQLITE_BUFFER_SIZE
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from services.storage import add_sensor_data, flush_sqlite_buffer, get_latest_data
 from services.websocket_manager import (
@@ -39,15 +35,6 @@ async def websocket_arduino(websocket: WebSocket):
         
         # Determine if this is Arduino or laptop microphone based on first message
         is_arduino_connection = None
-        
-        # Task for periodic flush of SQLite buffer (non-blocking)
-        async def periodic_flush():
-            while True:
-                await asyncio.sleep(FLUSH_INTERVAL_SECONDS)
-                # Run in background, don't block
-                asyncio.create_task(flush_sqlite_buffer())
-        
-        flush_task = asyncio.create_task(periodic_flush())
         
         # Heartbeat task to keep connection alive (important for ngrok)
         async def heartbeat():
@@ -113,7 +100,6 @@ async def websocket_arduino(websocket: WebSocket):
                 await websocket.send_text(f"Echo: {data}")
                 
         finally:
-            flush_task.cancel()
             heartbeat_task.cancel()
             try:
                 await heartbeat_task
