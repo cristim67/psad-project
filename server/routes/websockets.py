@@ -4,9 +4,9 @@ import json
 from datetime import datetime
 
 from config.logger import logger
-from config.settings import DASHBOARD_INITIAL_DATA_COUNT, SQLITE_BUFFER_SIZE
+from config.settings import DASHBOARD_INITIAL_DATA_COUNT
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from services.storage import add_sensor_data, flush_sqlite_buffer, get_latest_data
+from services.storage import add_sensor_data, get_latest_data
 from services.websocket_manager import (
     add_connection,
     broadcast_to_dashboards,
@@ -58,6 +58,16 @@ async def websocket_arduino(websocket: WebSocket):
                 
                 try:
                     data_json = json.loads(data)
+                    
+                    # Handle Arduino request for audio data
+                    if data_json.get("request") == "audio_data":
+                        # Send latest audio data if available
+                        latest = get_latest_data(1)
+                        if latest and "audio_data" in latest[0]:
+                            await send_to_arduino(json.dumps(latest[0]))
+                            logger.debug(f"Sent latest audio data to Arduino on request")
+                        continue
+                    
                     data_json["timestamp"] = datetime.now().isoformat()
                     data_json["client"] = client_host
                     
@@ -82,22 +92,20 @@ async def websocket_arduino(websocket: WebSocket):
                             is_arduino_connection = True
                             set_arduino_connection(websocket)
                     
-                    # Add to storage (memory + buffer)
+                    # Add to storage (memory only)
                     add_sensor_data(data_json)
                     
                     # Broadcast to all dashboards
                     await broadcast_to_dashboards(json.dumps(data_json))
                     
-                    # If this is laptop microphone data, forward to Arduino if connected
-                    if data_json["source"] == "laptop_microphone":
-                        if await send_to_arduino(data):
-                            logger.debug(f"Forwarded audio data to Arduino")
+                    # If this is laptop microphone data, forward to Arduino immediately if connected
+                    if data_json["source"] == "laptop_microphone" and "audio_data" in data_json:
+                        # Send the processed JSON object (with audio_data array) to Arduino immediately
+                        if await send_to_arduino(json.dumps(data_json)):
+                            logger.debug(f"Forwarded audio data to Arduino immediately")
                     
                 except json.JSONDecodeError:
                     logger.warning(f"Invalid JSON message from {client_host}: {data}")
-                
-                # Echo response
-                await websocket.send_text(f"Echo: {data}")
                 
         finally:
             heartbeat_task.cancel()
@@ -107,10 +115,6 @@ async def websocket_arduino(websocket: WebSocket):
                 pass
             if is_arduino_connection:
                 set_arduino_connection(None)
-            # Save remaining buffer (non-blocking)
-            from services.storage import sqlite_buffer
-            if sqlite_buffer:
-                asyncio.create_task(flush_sqlite_buffer())
             
     except WebSocketDisconnect:
         logger.info(f"WebSocket DISCONNECTED from {client_host} (normal disconnect)")
@@ -171,7 +175,8 @@ async def websocket_microphone(websocket: WebSocket):
                         await broadcast_to_dashboards(json.dumps(data_json))
                         
                         # Forward to Arduino if connected
-                        if await send_to_arduino(data):
+                        # Send the processed JSON object (with audio_data array) to Arduino
+                        if await send_to_arduino(json.dumps(data_json)):
                             logger.debug(f"Forwarded audio data to Arduino")
                         
                     except json.JSONDecodeError:

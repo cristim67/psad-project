@@ -24,10 +24,11 @@ class MicrophoneClient:
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1  # Mono
         self.RATE = 44100  # Sample rate
-        self.SEND_INTERVAL_MS = 200  # Similar to Arduino
+        self.SEND_INTERVAL_MS = 50  # Faster sending for real-time processing
         
         self.audio = pyaudio.PyAudio()
         self.stream = None
+        self.send_count = 0  # Counter for debug output
     
     def start_audio_stream(self) -> bool:
         """Start audio stream"""
@@ -134,18 +135,19 @@ class MicrophoneClient:
                     await asyncio.sleep(0.1)
                     continue
                 
-                # Send at each interval
+                # Send at each interval (no delay - send immediately)
                 if current_time_ms - last_send_time >= self.SEND_INTERVAL_MS:
                     # Send raw audio data to server (no processing)
                     await self.send_audio_data(audio_data, current_time_ms)
                     
-                    # Debug output
-                    print(f"📤 Sent audio chunk: {len(audio_data)} bytes")
+                    # Debug output (less frequent to avoid spam)
+                    self.send_count += 1
+                    if self.send_count % 10 == 0:  # Print every 10th chunk
+                        print(f"📤 Sent audio chunk: {len(audio_data)} bytes (total: {self.send_count})")
                     
                     last_send_time = current_time_ms
                 
-                # Small delay to avoid overloading CPU
-                await asyncio.sleep(0.01)
+                # No delay - read continuously for maximum throughput
                 
         except KeyboardInterrupt:
             print("\n\n⏹️  Stopping...")

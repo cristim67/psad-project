@@ -75,14 +75,16 @@ void processAudioData(String audioData)
     long avgAmplitude = sum / sampleCount;
 
     // Convert to volume (0-100 scale)
-    // For 16-bit audio, map 0-6000 peak-to-peak to 0-100 volume
+    // Adjusted for real-world audio levels - map 0-500 peak-to-peak to 0-100 volume
+    // This is more sensitive to actual audio levels
     if (processedPeakToPeak > 0)
     {
-        processedVolume = map(processedPeakToPeak, 0, 6000, 0, 100);
+        // Map from 0-500 to 0-100 (more sensitive)
+        processedVolume = map(processedPeakToPeak, 0, 500, 0, 100);
         processedVolume = constrain(processedVolume, 0, 100);
 
-        // Minimum threshold to eliminate background noise
-        if (processedPeakToPeak < 100)
+        // Lower threshold - only eliminate very quiet noise (below 5)
+        if (processedPeakToPeak < 5)
         {
             processedVolume = 0;
         }
@@ -168,7 +170,8 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
             audioData.reserve(arraySize);
             for (int i = 0; i < arraySize; i++)
             {
-                audioData += (char)audioArray[i];
+                // ArduinoJson requires int/uint8_t conversion, not direct char
+                audioData += (char)(uint8_t)audioArray[i];
             }
 
             processAudioData(audioData);
