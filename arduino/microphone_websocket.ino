@@ -1,7 +1,6 @@
 #include <WiFi.h>
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
-#include <mbedtls/base64.h>
 
 const char *ssid = "NAVA-MAMA 5829";
 const char *password = "D76?b492";
@@ -15,11 +14,11 @@ bool isConnected = false;
 unsigned long connectionTime = 0; // Track when connection was established
 
 // Variables for receiving and processing audio data
-String receivedAudioBase64 = "";
 unsigned long receivedTimestamp = 0;
 unsigned long lastDataReceivedTime = 0;
 const unsigned long DATA_TIMEOUT = 2000; // 2 seconds timeout
 bool hasAudioData = false;
+bool needToRequestAudio = false; // Flag to request audio data non-blockingly
 
 // Audio processing variables
 int processedVolume = 0;
@@ -28,54 +27,8 @@ int audioRate = 44100;
 int audioChannels = 1;
 int audioChunkSize = 1024;
 
-// Forward declarations
-String base64Decode(String input);
+// Forward declaration
 void processAudioData(String audioData);
-
-// Base64 decoding function using mbedtls
-String base64Decode(String input)
-{
-    size_t inputLen = input.length();
-    if (inputLen == 0)
-    {
-        return String("");
-    }
-
-    // Calculate output buffer size (base64 is 4/3 of input)
-    size_t outputLen = (inputLen * 3) / 4;
-    uint8_t *outputBuffer = (uint8_t *)malloc(outputLen);
-    if (!outputBuffer)
-    {
-        Serial.println("❌ Failed to allocate memory for base64 decode");
-        return String("");
-    }
-
-    size_t actualOutputLen = 0;
-    int result = mbedtls_base64_decode(
-        outputBuffer,
-        outputLen,
-        &actualOutputLen,
-        (const unsigned char *)input.c_str(),
-        inputLen);
-
-    String output = "";
-    if (result == 0)
-    {
-        // Convert byte array to String
-        for (size_t i = 0; i < actualOutputLen; i++)
-        {
-            output += (char)outputBuffer[i];
-        }
-    }
-    else
-    {
-        Serial.print("❌ Base64 decode failed with error: ");
-        Serial.println(result);
-    }
-
-    free(outputBuffer);
-    return output;
-}
 
 // Process audio data (int16 samples) and calculate volume and peak-to-peak
 void processAudioData(String audioData)
@@ -157,16 +110,15 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         }
         isConnected = true;
         lastSendTime = millis();
+        connectionTime = millis();
         Serial.println("✅ Ready to receive and process raw audio data from server");
 
         // Identify as Arduino to server
         webSocket.sendTXT("{\"source\":\"arduino\",\"status\":\"connected\",\"type\":\"audio_processor\"}");
         Serial.println("📤 Sent identification message to server");
 
-        // Request audio data from server
-        delay(500); // Small delay to ensure connection is stable
-        webSocket.sendTXT("{\"source\":\"arduino\",\"request\":\"audio_data\"}");
-        Serial.println("📤 Sent request for audio data");
+        // Request audio data from server (non-blocking - will be sent in loop after short delay)
+        needToRequestAudio = true;
         break;
 
     case WStype_TEXT:
@@ -183,49 +135,52 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         }
 
         // Check if this message contains audio_data
-        if (doc.containsKey("audio_data"))
+        if (doc.containsKey("audio_data") && doc["audio_data"].is<JsonArray>())
         {
-            const char *audioBase64 = doc["audio_data"];
-            if (audioBase64)
+            // Array of bytes (direct format, no base64)
+            JsonArray audioArray = doc["audio_data"];
+            int arraySize = audioArray.size();
+
+            Serial.print("📥 Received audio data (array size: ");
+            Serial.print(arraySize);
+            Serial.println(" bytes)");
+
+            // Extract metadata
+            if (doc.containsKey("rate"))
             {
-                Serial.print("📥 Received audio data (base64 length: ");
-                Serial.print(strlen(audioBase64));
-                Serial.println(")");
-
-                // Extract metadata
-                if (doc.containsKey("rate"))
-                {
-                    audioRate = doc["rate"];
-                }
-                if (doc.containsKey("chunk_size"))
-                {
-                    audioChunkSize = doc["chunk_size"];
-                }
-                if (doc.containsKey("channels"))
-                {
-                    audioChannels = doc["channels"];
-                }
-                if (doc.containsKey("timestamp"))
-                {
-                    receivedTimestamp = doc["timestamp"];
-                }
-
-                // Decode base64 and process audio
-                String decodedAudio = base64Decode(String(audioBase64));
-                processAudioData(decodedAudio);
-
-                hasAudioData = true;
-                lastDataReceivedTime = millis();
-
-                Serial.print("🎤 Processed: Volume=");
-                Serial.print(processedVolume);
-                Serial.print(", PeakToPeak=");
-                Serial.println(processedPeakToPeak);
+                audioRate = doc["rate"];
             }
-            else
+            if (doc.containsKey("chunk_size"))
             {
-                Serial.println("⚠️ audio_data field is null");
+                audioChunkSize = doc["chunk_size"];
             }
+            if (doc.containsKey("channels"))
+            {
+                audioChannels = doc["channels"];
+            }
+            if (doc.containsKey("timestamp"))
+            {
+                receivedTimestamp = doc["timestamp"];
+            }
+
+            // Convert array to String for processing (direct bytes)
+            String audioData = "";
+            audioData.reserve(arraySize);
+            for (int i = 0; i < arraySize; i++)
+            {
+                audioData += (char)audioArray[i];
+            }
+
+            processAudioData(audioData);
+
+            hasAudioData = true;
+            lastDataReceivedTime = millis();
+            lastSendTime = millis(); // Reset send timer to send immediately
+
+            Serial.print("🎤 Processed: Volume=");
+            Serial.print(processedVolume);
+            Serial.print(", PeakToPeak=");
+            Serial.println(processedPeakToPeak);
         }
         else
         {
@@ -354,6 +309,14 @@ void loop()
 {
     webSocket.loop(); // Must be called constantly
 
+    // Non-blocking audio request after connection (replaces delay(500))
+    if (needToRequestAudio && isConnected && (millis() - connectionTime >= 100))
+    {
+        webSocket.sendTXT("{\"source\":\"arduino\",\"request\":\"audio_data\"}");
+        Serial.println("📤 Sent request for audio data");
+        needToRequestAudio = false;
+    }
+
     // Connection status monitoring
     static unsigned long lastStatusCheck = 0;
     if (millis() - lastStatusCheck > 5000) // Every 5 seconds
@@ -369,7 +332,7 @@ void loop()
     static unsigned long lastRequestTime = 0;
     if (isConnected && (millis() - lastDataReceivedTime > DATA_TIMEOUT))
     {
-        if (millis() - lastRequestTime > 5000) // Request every 5 seconds if no data
+        if (millis() - lastRequestTime > 1000) // Request every 1 second if no data (faster response)
         {
             webSocket.sendTXT("{\"source\":\"arduino\",\"request\":\"audio_data\"}");
             Serial.println("📤 Requesting audio data from server...");
