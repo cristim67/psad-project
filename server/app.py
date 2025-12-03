@@ -1,14 +1,18 @@
 """Main FastAPI application"""
 
 from config.settings import STATIC_DIR
-from database.db import init_db
+from context.lifespan import lifespan
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from middleware.logging import log_requests
 from routes import api_router, websocket_router
 
-app = FastAPI(title="IoT WebSocket Server", version="1.0.0")
+app = FastAPI(
+    title="IoT WebSocket Server",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # CORS middleware
 app.add_middleware(
@@ -29,13 +33,6 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 # Include routers
 app.include_router(api_router)
 app.include_router(websocket_router)
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on server startup"""
-    await init_db()
-    print("✅ Database initialized")
 
 
 if __name__ == "__main__":
