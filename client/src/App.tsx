@@ -8,6 +8,7 @@ import { SpectrogramChart } from "./components/SpectrogramChart";
 import { FrequencyBands } from "./components/FrequencyBands";
 import { FilterControls, FilterSettings } from "./components/FilterControls";
 import { DataTable } from "./components/DataTable";
+import { SignalQuality } from "./components/SignalQuality";
 import { formatTimestamp } from "./services/api";
 
 const NUM_BANDS = 9;
@@ -36,7 +37,7 @@ function App() {
   );
   const [dataHistory, setDataHistory] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<string>("-");
-  const [syncStatus, setSyncStatus] = useState<string>("Not connected");
+  const [syncStatus, setSyncStatus] = useState<string>("Not applied");
 
   // Throttle agresiv pentru smoothness - actualizează maxim la fiecare 150ms
   const lastUpdateTime = useRef<number>(0);
@@ -107,7 +108,7 @@ function App() {
         setSyncStatus(`${typeName} @ ${settings.cutoffFreq}Hz`);
         setTimeout(() => setSyncStatus("Ready"), 3000);
       } else {
-        setSyncStatus("Not connected");
+        setSyncStatus("Not applied");
       }
     },
     [sendFilterSettings]
@@ -142,11 +143,17 @@ function App() {
               </p>
             </div>
             {isConnected && (
-              <div className="ml-auto flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-lg px-4 py-2">
-                <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse shadow-lg shadow-blue-400/40" />
-                <span className="text-blue-300 font-semibold text-sm">
-                  LIVE
-                </span>
+              <div className="ml-auto flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2 relative overflow-hidden">
+                <div className="absolute inset-0 bg-green-500/5 animate-pulse" />
+                <div className="relative flex items-center gap-2">
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-green-400 rounded-full animate-ping absolute" />
+                    <div className="w-3 h-3 bg-green-400 rounded-full relative shadow-lg shadow-green-400/50" />
+                  </div>
+                  <span className="text-green-300 font-bold text-sm tracking-wider">
+                    ● LIVE
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -208,6 +215,11 @@ function App() {
               title="Voice FFT — Filtered Signal"
             />
           </div>
+
+          <SignalQuality
+            snrRaw={lastData?.snrRaw}
+            snrFiltered={lastData?.snrFiltered}
+          />
 
           <MetricsCards {...currentMetrics} />
 

@@ -3,7 +3,8 @@ import { formatTimestamp } from "../services/api";
 
 interface DataTableProps {
   history: Array<{
-    timestamp: number | string | undefined;
+    timestamp?: number | string | undefined;
+    server_timestamp?: string | undefined;
     volume: number;
     volumeFiltered?: number;
     peakToPeak: number;
@@ -53,14 +54,15 @@ export function DataTable({ history }: DataTableProps) {
               </tr>
             ) : (
               history.slice(0, 10).map((row, index) => {
-                const formattedTime = formatTimestamp(row.timestamp);
+                const timestamp = row.timestamp || row.server_timestamp;
+                const formattedTime = formatTimestamp(timestamp);
                 return (
                   <tr
                     key={index}
                     className="border-b border-slate-700/30 hover:bg-slate-700/20 transition-colors"
                   >
                     <td className="py-3 px-4 text-sm text-blue-300 font-mono">
-                      {formattedTime}
+                      {formattedTime !== "-" ? formattedTime : "N/A"}
                     </td>
                     <td className="py-3 px-4 text-sm font-semibold text-blue-300">
                       {row.volume}

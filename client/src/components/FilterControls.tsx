@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Send,
+  RotateCcw,
   Settings,
   Radio,
   Volume2,
@@ -31,10 +32,9 @@ export function FilterControls({
     voiceBoost: 100,
   });
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const filterTypes = [
-    { value: "bypass", label: "Bypass" },
     { value: "lowpass", label: "Low-Pass" },
     { value: "bandpass", label: "Band-Pass" },
     { value: "highpass", label: "High-Pass" },
@@ -64,7 +64,7 @@ export function FilterControls({
   };
 
   const getSyncStatusColor = () => {
-    if (syncStatus.includes("Not connected") || syncStatus.includes("❌")) {
+    if (syncStatus.includes("Not applied") || syncStatus.includes("❌")) {
       return "bg-red-500/10 text-red-300 border-red-500/30";
     }
     if (syncStatus.includes("Ready") || syncStatus.includes("⚪")) {
@@ -118,7 +118,7 @@ export function FilterControls({
                 Filter Type
               </span>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {filterTypes.map((type) => {
                 const isActive = settings.filterType === type.value;
                 return (
@@ -278,13 +278,20 @@ export function FilterControls({
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-4 border-t border-slate-700/50">
+          <div className="pt-4 border-t border-slate-700/50 flex gap-3">
             <button
               onClick={() => onApplyFilter(settings)}
-              className="w-full flex items-center justify-center gap-2 bg-green-500/20 text-green-300 px-6 py-3 rounded-lg font-semibold hover:bg-green-500/30 border border-green-500/40 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              className="flex-1 flex items-center justify-center gap-2 bg-green-500/20 text-green-300 px-6 py-3 rounded-lg font-semibold hover:bg-green-500/30 border border-green-500/40 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               <Send className="w-4 h-4" />
               Apply Filter
+            </button>
+            <button
+              onClick={handleReset}
+              className="flex items-center justify-center gap-2 bg-slate-800/50 text-slate-300 px-6 py-3 rounded-lg font-semibold hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset
             </button>
           </div>
         </div>

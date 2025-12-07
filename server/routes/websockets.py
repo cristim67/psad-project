@@ -27,11 +27,10 @@ async def websocket_esp32(websocket: WebSocket):
     Receives audio data from ESP32 and broadcasts to dashboards.
     """
     client_host = websocket.client.host if websocket.client else "Unknown"
-    logger.info(f"WebSocket connection attempt from {client_host}")
     
     try:
         await websocket.accept()
-        logger.info(f"WebSocket CONNECTED from {client_host}")
+        logger.info(f"✅ WebSocket CONNECTED from {client_host}")
         await websocket.send_text('{"status":"connected","message":"Welcome!"}')
         
         is_esp32_connection = None
@@ -57,7 +56,6 @@ async def websocket_esp32(websocket: WebSocket):
                 
                 # Check for disconnect
                 if message.get("type") == "websocket.disconnect":
-                    logger.info(f"Client {client_host} disconnected gracefully")
                     break
                 
                 # Handle text message (JSON from ESP32)
@@ -65,7 +63,6 @@ async def websocket_esp32(websocket: WebSocket):
                     continue
                     
                 data = message["text"]
-                logger.debug(f"Received from [{client_host}]: {data[:150]}...")
                 
                 try:
                     data_json = json.loads(data)
@@ -86,19 +83,19 @@ async def websocket_esp32(websocket: WebSocket):
                             is_esp32_connection = True
                             set_esp32_connection(websocket)
                             logger.info(f"🎤 ESP32 microphone connected from {client_host}")
-                            # Broadcast ESP32 connection status to all dashboards
+                        
+                        if msg_type == "microphone_data":
+                            if not is_esp32_connection:
+                                is_esp32_connection = True
+                                set_esp32_connection(websocket)
+                            
+                            # Broadcast ESP32 connection status (mereu true dacă primește date)
                             status_msg = {
                                 "type": "esp32_status",
                                 "connected": True,
                                 "timestamp": datetime.now().isoformat()
                             }
                             await broadcast_to_dashboards(json.dumps(status_msg))
-                        
-                        # Log microphone data periodically
-                        if msg_type == "microphone_data":
-                            volume = data_json.get("volume", 0)
-                            peakToPeak = data_json.get("peakToPeak", 0)
-                            logger.info(f"🎤 ESP32: Vol={volume}% P2P={peakToPeak}")
                     
                     # Store data
                     add_sensor_data(data_json)
@@ -107,7 +104,7 @@ async def websocket_esp32(websocket: WebSocket):
                     await broadcast_to_dashboards(json.dumps(data_json))
                     
                 except json.JSONDecodeError:
-                    logger.warning(f"Invalid JSON from {client_host}: {data[:100]}")
+                    logger.debug(f"Invalid JSON from {client_host}: {data[:100]}")
                 
         finally:
             heartbeat_task.cancel()
@@ -117,7 +114,7 @@ async def websocket_esp32(websocket: WebSocket):
                 pass
             if is_esp32_connection:
                 set_esp32_connection(None)
-                logger.info(f"🎤 ESP32 microphone disconnected")
+                logger.info(f"🎤 ESP32 microphone disconnected from {client_host}")
                 # Broadcast ESP32 disconnection status to all dashboards
                 status_msg = {
                     "type": "esp32_status",
@@ -127,7 +124,7 @@ async def websocket_esp32(websocket: WebSocket):
                 await broadcast_to_dashboards(json.dumps(status_msg))
             
     except WebSocketDisconnect:
-        logger.info(f"WebSocket DISCONNECTED from {client_host}")
+        logger.info(f"❌ WebSocket DISCONNECTED from {client_host}")
         if is_esp32_connection:
             set_esp32_connection(None)
             status_msg = {
@@ -138,9 +135,9 @@ async def websocket_esp32(websocket: WebSocket):
             await broadcast_to_dashboards(json.dumps(status_msg))
     except RuntimeError as e:
         if "disconnect" in str(e).lower():
-            logger.info(f"WebSocket {client_host} disconnected (runtime)")
+            logger.debug(f"WebSocket {client_host} disconnected (runtime)")
         else:
-            logger.error(f"WebSocket RuntimeError from {client_host}: {e}")
+            logger.error(f"❌ WebSocket RuntimeError from {client_host}: {e}")
         if is_esp32_connection:
             set_esp32_connection(None)
             status_msg = {
@@ -150,7 +147,7 @@ async def websocket_esp32(websocket: WebSocket):
             }
             await broadcast_to_dashboards(json.dumps(status_msg))
     except Exception as e:
-        logger.error(f"WebSocket ERROR from {client_host}: {type(e).__name__}: {e}")
+        logger.error(f"❌ WebSocket ERROR from {client_host}: {type(e).__name__}: {e}")
         if is_esp32_connection:
             set_esp32_connection(None)
             status_msg = {
@@ -168,12 +165,11 @@ async def websocket_dashboard(websocket: WebSocket):
     Receives real-time updates from ESP32 microphone.
     """
     client_host = websocket.client.host if websocket.client else "Unknown"
-    logger.info(f"Dashboard connection attempt from {client_host}")
     
     try:
         await websocket.accept()
         add_connection(websocket)
-        logger.info(f"Dashboard CONNECTED from {client_host} (Total: {get_connection_count()})")
+        logger.info(f"📊 Dashboard CONNECTED from {client_host} (Total: {get_connection_count()})")
         
         # Send latest available data immediately
         latest = get_latest_data(DASHBOARD_INITIAL_DATA_COUNT)
@@ -196,7 +192,6 @@ async def websocket_dashboard(websocket: WebSocket):
         while True:
             try:
                 data = await websocket.receive_text()
-                logger.info(f"Received from Dashboard [{client_host}]: {data}")
                 
                 # Parse and forward to ESP32 if it's a filter/command message
                 try:
@@ -204,7 +199,7 @@ async def websocket_dashboard(websocket: WebSocket):
                     if msg.get("target") == "esp32":
                         success = await send_to_esp32(data)
                         if success:
-                            logger.info(f"📤 → ESP32: {msg.get('type')}")
+                            logger.debug(f"📤 → ESP32: {msg.get('type')}")
                         else:
                             logger.warning("❌ ESP32 not connected")
                 except json.JSONDecodeError:
@@ -214,9 +209,9 @@ async def websocket_dashboard(websocket: WebSocket):
                 break
                 
     except WebSocketDisconnect:
-        logger.info(f"Dashboard DISCONNECTED from {client_host}")
+        logger.info(f"📊 Dashboard DISCONNECTED from {client_host}")
     except Exception as e:
-        logger.error(f"Dashboard ERROR from {client_host}: {type(e).__name__}: {e}", exc_info=True)
+        logger.error(f"❌ Dashboard ERROR from {client_host}: {type(e).__name__}: {e}", exc_info=True)
     finally:
         remove_connection(websocket)
-        logger.info(f"Active dashboards: {get_connection_count()}")
+        logger.debug(f"Active dashboards: {get_connection_count()}")

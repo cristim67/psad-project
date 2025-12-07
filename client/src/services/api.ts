@@ -22,6 +22,8 @@ export interface AudioData {
   server_timestamp?: string;
   client?: string;
   calibrated?: boolean;
+  snrRaw?: number;
+  snrFiltered?: number;
 }
 
 // ============================================================================
@@ -114,7 +116,7 @@ export function isValidAudioData(data: any): data is AudioData {
 }
 
 /**
- * Format timestamp for display
+ * Format timestamp for display (converts to user's local timezone)
  */
 export function formatTimestamp(
   timestamp: string | number | undefined
@@ -122,16 +124,19 @@ export function formatTimestamp(
   if (!timestamp) return "-";
 
   try {
+    // Parse timestamp (ISO string or number)
     const date =
       typeof timestamp === "number" ? new Date(timestamp) : new Date(timestamp);
 
     if (isNaN(date.getTime())) return "-";
 
-    return date.toLocaleTimeString("en-US", {
+    // Convert to user's local timezone and format
+    return date.toLocaleTimeString(undefined, {
       hour12: false,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
+      timeZoneName: "short", // Shows timezone abbreviation (e.g., "GMT+2")
     });
   } catch {
     return "-";

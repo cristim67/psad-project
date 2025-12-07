@@ -18,8 +18,8 @@ export function StatusBar({
           <div className="flex items-center gap-2">
             {isConnected ? (
               <>
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse shadow-lg shadow-blue-400/40" />
-                <span className="text-blue-300 font-medium">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/40" />
+                <span className="text-green-300 font-medium">
                   Dashboard Connected
                 </span>
               </>
@@ -36,11 +36,11 @@ export function StatusBar({
           <div className="h-4 w-px bg-slate-700" />
 
           <div className="flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-blue-400" />
+            <Cpu className="w-4 h-4 text-green-400" />
             {isESP32Connected ? (
               <>
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse shadow-lg shadow-blue-400/40" />
-                <span className="text-blue-300 font-medium">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/40" />
+                <span className="text-green-300 font-medium">
                   ESP32 Connected
                 </span>
               </>

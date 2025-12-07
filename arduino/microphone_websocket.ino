@@ -225,15 +225,38 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     switch (type)
     {
     case WStype_CONNECTED:
+    {
         Serial.println("✅ WebSocket conectat!");
+        Serial.printf("   URL: wss://%s:%d%s\n", WS_HOST, WS_PORT, WS_PATH);
         isConnected = true;
+        // Trimite mesaj de conectare (non-blocking)
         webSocket.sendTXT("{\"source\":\"esp32\",\"type\":\"connected\"}");
         break;
+    }
 
     case WStype_DISCONNECTED:
-        Serial.println("❌ WebSocket deconectat!");
+    {
+        Serial.println("❌ WebSocket DEconectat!");
+        Serial.println("   Cauză: Conexiune pierdută sau server indisponibil");
+        Serial.println("   Se va încerca reconectarea automată...");
         isConnected = false;
         break;
+    }
+
+    case WStype_ERROR:
+    {
+        Serial.println("❌ WebSocket ERROR!");
+        if (payload != NULL && length > 0)
+        {
+            Serial.printf("   Eroare: %.*s\n", length, payload);
+        }
+        else
+        {
+            Serial.println("   Eroare: Necunoscută");
+        }
+        isConnected = false;
+        break;
+    }
 
     case WStype_TEXT:
     {
@@ -603,12 +626,43 @@ void setup()
 
 void loop()
 {
+    // Apelăm webSocket.loop() în fiecare iterație pentru a menține conexiunea activă
     webSocket.loop();
 
     unsigned long now = millis();
     if (now - lastSendTime < SEND_INTERVAL)
         return;
     lastSendTime = now;
+
+    // Verifică dacă conexiunea este încă activă
+    if (!isConnected)
+    {
+        static unsigned long lastCheckTime = 0;
+        unsigned long now = millis();
+        // Log o dată la 5 secunde când nu e conectat
+        if (now - lastCheckTime > 5000)
+        {
+            Serial.println("⚠️ WebSocket nu este conectat - aștept reconectare...");
+            lastCheckTime = now;
+        }
+        return; // Nu trimite dacă nu e conectat
+    }
+
+    // Verifică dacă conexiunea WebSocket este funcțională
+    if (!webSocket.isConnected())
+    {
+        static unsigned long lastErrorTime = 0;
+        unsigned long now = millis();
+        // Log o dată la 2 secunde când conexiunea e pierdută
+        if (now - lastErrorTime > 2000)
+        {
+            Serial.println("⚠️ WebSocket.isConnected() returnează false!");
+            Serial.println("   Actualizare starea conexiunii...");
+            isConnected = false;
+            lastErrorTime = now;
+        }
+        return;
+    }
 
     // Colectează eșantioane pentru FFT - sampling rapid
     int minVal = 4095;
@@ -654,6 +708,40 @@ void loop()
     // Aplică noise gate la benzi pentru versiunea filtrată
     applyNoiseGateToBands(bandsFiltered, bandsFiltered);
 
+    // ========== CALCUL SNR ==========
+    // Calculează SNR doar dacă e calibrat (altfel e 0)
+    float snrRaw = 0;
+    float snrFiltered = 0;
+
+    if (calibrated)
+    {
+        // SNR pentru RAW: raportul între energia semnalului și noise floor
+        float signalEnergyRaw = 0;
+        float noiseEnergyRaw = 0;
+        for (int i = 0; i < NUM_BANDS; i++)
+        {
+            signalEnergyRaw += bands[i] * bands[i];
+            noiseEnergyRaw += noiseFloor[i] * noiseFloor[i];
+        }
+        if (noiseEnergyRaw > 0 && signalEnergyRaw > noiseEnergyRaw)
+        {
+            snrRaw = 10.0f * log10f(signalEnergyRaw / noiseEnergyRaw);
+        }
+
+        // SNR pentru FILTERED: raportul între energia semnalului filtrat și noise floor
+        float signalEnergyFiltered = 0;
+        float noiseEnergyFiltered = 0;
+        for (int i = 0; i < NUM_BANDS; i++)
+        {
+            signalEnergyFiltered += bandsFiltered[i] * bandsFiltered[i];
+            noiseEnergyFiltered += noiseFloor[i] * noiseFloor[i];
+        }
+        if (noiseEnergyFiltered > 0 && signalEnergyFiltered > noiseEnergyFiltered)
+        {
+            snrFiltered = 10.0f * log10f(signalEnergyFiltered / noiseEnergyFiltered);
+        }
+    }
+
     // ========== VOLUM RAW ==========
     int volumeRaw = (int)((float)amplitude * 100.0f / AMP_REF);
     if (volumeRaw > 100)
@@ -672,36 +760,77 @@ void loop()
         volumeFiltered = 0;
 
     // ========== TRIMITE DATE ==========
-    if (isConnected)
+    // Verifică dacă WebSocket este conectat și funcțional
+    if (isConnected && webSocket.isConnected())
     {
-        char msg[700];
-
+        // Buffer mai mare pentru a evita overflow-ul
+        char msg[900];
         char bandsRawStr[150];
+        char bandsFilteredStr[150];
+
+        // Formatează benzi
         snprintf(bandsRawStr, sizeof(bandsRawStr), "[%d,%d,%d,%d,%d,%d,%d,%d,%d]",
                  (int)bands[0], (int)bands[1], (int)bands[2], (int)bands[3],
                  (int)bands[4], (int)bands[5], (int)bands[6], (int)bands[7], (int)bands[8]);
 
-        char bandsFilteredStr[150];
         snprintf(bandsFilteredStr, sizeof(bandsFilteredStr), "[%d,%d,%d,%d,%d,%d,%d,%d,%d]",
                  (int)bandsFiltered[0], (int)bandsFiltered[1], (int)bandsFiltered[2], (int)bandsFiltered[3],
                  (int)bandsFiltered[4], (int)bandsFiltered[5], (int)bandsFiltered[6], (int)bandsFiltered[7], (int)bandsFiltered[8]);
 
-        snprintf(msg, sizeof(msg),
-                 "{\"source\":\"esp32\","
-                 "\"type\":\"microphone_data\","
-                 "\"volume\":%d,"
-                 "\"volumeFiltered\":%d,"
-                 "\"peakToPeak\":%d,"
-                 "\"min\":%d,"
-                 "\"max\":%d,"
-                 "\"avg\":%.1f,"
-                 "\"bands\":%s,"
-                 "\"bandsFiltered\":%s,"
-                 "\"calibrated\":%s}",
-                 volumeRaw, volumeFiltered, amplitude, minVal, maxVal, avg,
-                 bandsRawStr, bandsFilteredStr,
-                 calibrated ? "true" : "false");
+        // Construiește mesajul JSON
+        int msgLen = snprintf(msg, sizeof(msg),
+                              "{\"source\":\"esp32\","
+                              "\"type\":\"microphone_data\","
+                              "\"volume\":%d,"
+                              "\"volumeFiltered\":%d,"
+                              "\"peakToPeak\":%d,"
+                              "\"min\":%d,"
+                              "\"max\":%d,"
+                              "\"avg\":%.1f,"
+                              "\"bands\":%s,"
+                              "\"bandsFiltered\":%s,"
+                              "\"calibrated\":%s,"
+                              "\"snrRaw\":%.1f,"
+                              "\"snrFiltered\":%.1f}",
+                              volumeRaw, volumeFiltered, amplitude, minVal, maxVal, avg,
+                              bandsRawStr, bandsFilteredStr,
+                              calibrated ? "true" : "false",
+                              snrRaw, snrFiltered);
 
-        webSocket.sendTXT(msg);
+        // Verifică dacă mesajul s-a formatat corect (nu overflow)
+        if (msgLen > 0 && msgLen < (int)sizeof(msg))
+        {
+            bool sent = webSocket.sendTXT(msg);
+            if (!sent)
+            {
+                Serial.println("❌ EROARE: Nu s-a putut trimite mesajul WebSocket!");
+                Serial.println("   Verifică conexiunea și buffer-ul");
+                isConnected = false; // Marchează ca deconectat
+            }
+        }
+        else
+        {
+            // Mesaj prea mare - trimite fără SNR dacă e necesar
+            Serial.printf("⚠️ Mesaj prea mare (%d bytes), trimit fără SNR\n", msgLen);
+            msgLen = snprintf(msg, sizeof(msg),
+                              "{\"source\":\"esp32\","
+                              "\"type\":\"microphone_data\","
+                              "\"volume\":%d,"
+                              "\"volumeFiltered\":%d,"
+                              "\"peakToPeak\":%d,"
+                              "\"min\":%d,"
+                              "\"max\":%d,"
+                              "\"avg\":%.1f,"
+                              "\"bands\":%s,"
+                              "\"bandsFiltered\":%s,"
+                              "\"calibrated\":%s}",
+                              volumeRaw, volumeFiltered, amplitude, minVal, maxVal, avg,
+                              bandsRawStr, bandsFilteredStr,
+                              calibrated ? "true" : "false");
+            if (msgLen > 0 && msgLen < (int)sizeof(msg))
+            {
+                webSocket.sendTXT(msg);
+            }
+        }
     }
 }
