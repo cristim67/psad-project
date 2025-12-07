@@ -55,7 +55,7 @@ Real-time audio analysis platform using ESP32, FastAPI, and React. The system ca
 ### ESP32 Firmware (`arduino/microphone_websocket.ino`)
 - **Hardware Setup**: ESP32 + Pre-Amplifier + Electret Microphone
 
-![Hardware Setup](https://github.com/cristimiloiu/psad-project/blob/main/docs/images/breadboard.jpeg)
+![Hardware Setup](https://github.com/cristimiloiu/psad-project/blob/main/images/breadboard.jpeg)
 
 - **Features**:
   - Audio capture at 16kHz
@@ -74,6 +74,12 @@ Real-time audio analysis platform using ESP32, FastAPI, and React. The system ca
   - REST API for system information
   - Structured logging
 
+! [Backend Swagger UI](https://github.com/cristimiloiu/psad-project/blob/main/images/swagger-ui.png)
+
+```bash
+http://localhost:8000/docs
+```
+
 ### Frontend Dashboard (`client/`)
 - **Framework**: React + TypeScript + Vite
 - **UI**: Tailwind CSS
@@ -84,7 +90,7 @@ Real-time audio analysis platform using ESP32, FastAPI, and React. The system ca
   - Measurement log
   - Connection status (Dashboard & ESP32)
 
-![Frontend Dashboard](https://github.com/cristimiloiu/psad-project/blob/main/docs/images/frontend-dashboard.png)
+![Frontend Dashboard](https://github.com/cristimiloiu/psad-project/blob/main§/images/frontend-dashboard.png)
 
 ## 🚀 Running with Docker
 
