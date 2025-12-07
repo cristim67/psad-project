@@ -165,7 +165,7 @@ function App() {
                       <div className="w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full relative shadow-lg shadow-green-500/50 dark:shadow-green-400/50" />
                     </div>
                     <span className="text-green-600 dark:text-green-300 font-bold text-sm tracking-wider">
-                      ● LIVE
+                      LIVE
                     </span>
                   </div>
                 </div>

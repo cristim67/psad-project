@@ -14,8 +14,12 @@ const spectrogramWidth = 80;
 // Color cache - reduces repeated calculation
 const colorCache = new Map<string, string>();
 
-function getBandColor(value: number, isRaw: boolean): string {
-  const cacheKey = `${value.toFixed(2)}-${isRaw}`;
+function getBandColor(
+  value: number,
+  isRaw: boolean,
+  isLightMode: boolean = false
+): string {
+  const cacheKey = `${value.toFixed(2)}-${isRaw}-${isLightMode}`;
   if (colorCache.has(cacheKey)) {
     return colorCache.get(cacheKey)!;
   }
@@ -25,46 +29,97 @@ function getBandColor(value: number, isRaw: boolean): string {
 
   let color: string;
 
-  // Subtle color palette - blue tones for raw, pink tones for filtered
-  if (isRaw) {
-    if (intensity < 0.25) {
-      const t = intensity / 0.25;
-      color = `rgb(0, ${Math.floor(t * 60)}, ${Math.floor(t * 120)})`;
-    } else if (intensity < 0.5) {
-      const t = (intensity - 0.25) / 0.25;
-      color = `rgb(${Math.floor(t * 40)}, ${Math.floor(
-        60 + t * 80
-      )}, ${Math.floor(120 + t * 100)})`;
-    } else if (intensity < 0.75) {
-      const t = (intensity - 0.5) / 0.25;
-      color = `rgb(${Math.floor(40 + t * 100)}, ${Math.floor(
-        140 + t * 60
-      )}, ${Math.floor(220 + t * 35)})`;
+  if (isLightMode) {
+    // Brighter, more saturated colors for light mode with better contrast
+    if (isRaw) {
+      // Blue tones - vibrant blues for light mode
+      if (intensity < 0.25) {
+        const t = intensity / 0.25;
+        color = `rgb(${Math.floor(200 + t * 30)}, ${Math.floor(
+          220 + t * 25
+        )}, ${Math.floor(255)})`;
+      } else if (intensity < 0.5) {
+        const t = (intensity - 0.25) / 0.25;
+        color = `rgb(${Math.floor(100 + t * 100)}, ${Math.floor(
+          150 + t * 80
+        )}, ${Math.floor(255)})`;
+      } else if (intensity < 0.75) {
+        const t = (intensity - 0.5) / 0.25;
+        color = `rgb(${Math.floor(30 + t * 100)}, ${Math.floor(
+          100 + t * 100
+        )}, ${Math.floor(255)})`;
+      } else {
+        const t = (intensity - 0.75) / 0.25;
+        color = `rgb(${Math.floor(30 + t * 30)}, ${Math.floor(
+          50 + t * 100
+        )}, ${Math.floor(255)})`;
+      }
     } else {
-      const t = (intensity - 0.75) / 0.25;
-      color = `rgb(${Math.floor(140 + t * 100)}, ${Math.floor(
-        200 + t * 55
-      )}, 255)`;
+      // Pink/magenta tones - vibrant pinks for light mode
+      if (intensity < 0.25) {
+        const t = intensity / 0.25;
+        color = `rgb(${Math.floor(255)}, ${Math.floor(
+          220 + t * 20
+        )}, ${Math.floor(240 + t * 15)})`;
+      } else if (intensity < 0.5) {
+        const t = (intensity - 0.25) / 0.25;
+        color = `rgb(${Math.floor(255)}, ${Math.floor(
+          150 + t * 80
+        )}, ${Math.floor(200 + t * 55)})`;
+      } else if (intensity < 0.75) {
+        const t = (intensity - 0.5) / 0.25;
+        color = `rgb(${Math.floor(255)}, ${Math.floor(
+          100 + t * 100
+        )}, ${Math.floor(150 + t * 100)})`;
+      } else {
+        const t = (intensity - 0.75) / 0.25;
+        color = `rgb(${Math.floor(255)}, ${Math.floor(
+          50 + t * 100
+        )}, ${Math.floor(100 + t * 100)})`;
+      }
     }
   } else {
-    if (intensity < 0.25) {
-      const t = intensity / 0.25;
-      color = `rgb(${Math.floor(t * 80)}, 0, ${Math.floor(t * 60)})`;
-    } else if (intensity < 0.5) {
-      const t = (intensity - 0.25) / 0.25;
-      color = `rgb(${Math.floor(80 + t * 100)}, ${Math.floor(
-        t * 40
-      )}, ${Math.floor(60 + t * 100)})`;
-    } else if (intensity < 0.75) {
-      const t = (intensity - 0.5) / 0.25;
-      color = `rgb(${Math.floor(180 + t * 50)}, ${Math.floor(
-        40 + t * 80
-      )}, ${Math.floor(160 + t * 60)})`;
+    // Dark mode - original subtle palette
+    if (isRaw) {
+      if (intensity < 0.25) {
+        const t = intensity / 0.25;
+        color = `rgb(0, ${Math.floor(t * 60)}, ${Math.floor(t * 120)})`;
+      } else if (intensity < 0.5) {
+        const t = (intensity - 0.25) / 0.25;
+        color = `rgb(${Math.floor(t * 40)}, ${Math.floor(
+          60 + t * 80
+        )}, ${Math.floor(120 + t * 100)})`;
+      } else if (intensity < 0.75) {
+        const t = (intensity - 0.5) / 0.25;
+        color = `rgb(${Math.floor(40 + t * 100)}, ${Math.floor(
+          140 + t * 60
+        )}, ${Math.floor(220 + t * 35)})`;
+      } else {
+        const t = (intensity - 0.75) / 0.25;
+        color = `rgb(${Math.floor(140 + t * 100)}, ${Math.floor(
+          200 + t * 55
+        )}, 255)`;
+      }
     } else {
-      const t = (intensity - 0.75) / 0.25;
-      color = `rgb(230, ${Math.floor(120 + t * 100)}, ${Math.floor(
-        220 + t * 35
-      )})`;
+      if (intensity < 0.25) {
+        const t = intensity / 0.25;
+        color = `rgb(${Math.floor(t * 80)}, 0, ${Math.floor(t * 60)})`;
+      } else if (intensity < 0.5) {
+        const t = (intensity - 0.25) / 0.25;
+        color = `rgb(${Math.floor(80 + t * 100)}, ${Math.floor(
+          t * 40
+        )}, ${Math.floor(60 + t * 100)})`;
+      } else if (intensity < 0.75) {
+        const t = (intensity - 0.5) / 0.25;
+        color = `rgb(${Math.floor(180 + t * 50)}, ${Math.floor(
+          40 + t * 80
+        )}, ${Math.floor(160 + t * 60)})`;
+      } else {
+        const t = (intensity - 0.75) / 0.25;
+        color = `rgb(230, ${Math.floor(120 + t * 100)}, ${Math.floor(
+          220 + t * 35
+        )})`;
+      }
     }
   }
 
@@ -162,13 +217,14 @@ export function SpectrogramChart({
       const colWidth = plotW / spectrogramWidth;
       const bandHeight = plotH / NUM_BANDS;
 
-      // Desenează spectrogram-ul
+      // Draw spectrogram
+      const isLightMode = theme === "light";
       history.forEach((bands, colIndex) => {
         const x = marginLeft + colIndex * colWidth;
         for (let band = 0; band < NUM_BANDS; band++) {
           const y = marginTop + plotH - (band + 1) * bandHeight;
           const value = bands[band] || 0;
-          ctx.fillStyle = getBandColor(value, isRaw);
+          ctx.fillStyle = getBandColor(value, isRaw, isLightMode);
           ctx.fillRect(x, y, colWidth + 1, bandHeight + 1);
         }
       });
@@ -217,7 +273,7 @@ export function SpectrogramChart({
 
       for (let i = 0; i < legendH; i++) {
         const intensity = ((legendH - i) / legendH) * 100;
-        ctx.fillStyle = getBandColor(intensity, isRaw);
+        ctx.fillStyle = getBandColor(intensity, isRaw, isLightMode);
         ctx.fillRect(legendX, legendY + i, legendW, 1);
       }
 
