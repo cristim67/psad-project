@@ -39,24 +39,24 @@ function App() {
   const [lastUpdate, setLastUpdate] = useState<string>("-");
   const [syncStatus, setSyncStatus] = useState<string>("Not applied");
 
-  // Throttle agresiv pentru smoothness - actualizează maxim la fiecare 150ms
+  // Aggressive throttle for smoothness - update at most every 150ms
   const lastUpdateTime = useRef<number>(0);
   const UPDATE_THROTTLE_MS = 150;
 
   useEffect(() => {
     if (!lastData) return;
 
-    // Procesează doar dacă a trecut suficient timp
+    // Process only if enough time has passed
     const now = Date.now();
     if (now - lastUpdateTime.current < UPDATE_THROTTLE_MS) {
-      return; // Skip update pentru smoothness
+      return; // Skip update for smoothness
     }
     lastUpdateTime.current = now;
 
     const volume = lastData.volume;
     const volumeFiltered = lastData.volumeFiltered ?? lastData.volume;
 
-    // Batch updates pentru performanță
+    // Batch updates for performance
     setWaveformDataRaw((prev) => {
       const newData = [...prev, volume];
       return newData.length > maxPoints ? newData.slice(-maxPoints) : newData;

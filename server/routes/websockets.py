@@ -89,7 +89,7 @@ async def websocket_esp32(websocket: WebSocket):
                                 is_esp32_connection = True
                                 set_esp32_connection(websocket)
                             
-                            # Broadcast ESP32 connection status (mereu true dacă primește date)
+                            # Broadcast ESP32 connection status (always true if receiving data)
                             status_msg = {
                                 "type": "esp32_status",
                                 "connected": True,

@@ -26,12 +26,12 @@ export function useWebSocket() {
       return;
     }
 
-    // Dacă socket-ul este deja deschis, nu reconecta
+    // If socket is already open, don't reconnect
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       return;
     }
 
-    // Închide socket-ul vechi dacă există
+    // Close old socket if it exists
     if (wsRef.current) {
       try {
         wsRef.current.close();
@@ -122,12 +122,12 @@ export function useWebSocket() {
         isConnectingRef.current = false;
         setIsConnected(false);
 
-        // Nu reconecta dacă a fost o închidere intenționată
+        // Don't reconnect if it was an intentional close
         if (!shouldReconnectRef.current) {
           return;
         }
 
-        // Exponential backoff cu minim 100ms pentru reconexiune rapidă
+        // Exponential backoff with minimum 100ms for fast reconnection
         const baseDelay = 100;
         const maxDelay = 5000;
         const delay = Math.min(
@@ -137,7 +137,7 @@ export function useWebSocket() {
 
         reconnectAttemptsRef.current++;
 
-        // Anulează timeout-ul anterior dacă există
+        // Cancel previous timeout if it exists
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
         }
@@ -180,14 +180,14 @@ export function useWebSocket() {
 
   const sendFilterSettings = (settings: FilterSettings) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      // Pentru bandpass, trimite ambele cutoff-uri, altfel doar cutoffFreq
+      // For bandpass, send both cutoffs, otherwise only cutoffFreq
       const settingsToSend: any = {
         filterType: settings.filterType,
         cutoffFreq: settings.cutoffFreq,
         voiceBoost: settings.voiceBoost,
       };
 
-      // Adaugă cutoffFreqHigh doar pentru bandpass
+      // Add cutoffFreqHigh only for bandpass
       if (settings.filterType === "bandpass" && settings.cutoffFreqHigh) {
         settingsToSend.cutoffFreqHigh = settings.cutoffFreqHigh;
       }

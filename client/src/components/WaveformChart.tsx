@@ -20,18 +20,18 @@ export function WaveformChart({
   const lastDataRef = useRef<number[]>([]);
 
   useEffect(() => {
-    // Skip dacă datele nu s-au schimbat
+    // Skip if data hasn't changed
     if (JSON.stringify(data) === JSON.stringify(lastDataRef.current)) {
       return;
     }
     lastDataRef.current = data;
 
-    // Anulează frame-ul anterior dacă există
+    // Cancel previous frame if it exists
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
 
-    // Folosește requestAnimationFrame pentru smooth rendering
+    // Use requestAnimationFrame for smooth rendering
     animationFrameRef.current = requestAnimationFrame(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;

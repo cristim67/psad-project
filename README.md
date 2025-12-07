@@ -1,8 +1,8 @@
 # Audio Analysis Platform - Real-Time Signal Processing
 
-Platformă pentru analiza audio în timp real folosind ESP32, FastAPI și React. Sistemul capturează date audio de la un microfon conectat la ESP32, procesează semnalul în timp real și afișează analize detaliate într-un dashboard web modern.
+Real-time audio analysis platform using ESP32, FastAPI, and React. The system captures audio data from a microphone connected to ESP32, processes the signal in real-time, and displays detailed analysis in a modern web dashboard.
 
-## 🏗️ Arhitectură
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -50,73 +50,73 @@ Platformă pentru analiza audio în timp real folosind ESP32, FastAPI și React.
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 📦 Componente
+## 📦 Components
 
 ### ESP32 Firmware (`arduino/microphone_websocket.ino`)
 - **Hardware**: ESP32 + MAX4466 Microphone
-- **Funcționalități**:
-  - Captură audio la 16kHz
-  - Analiză FFT cu 9 benzi de frecvență
-  - Filtrare în timp real (Low-Pass, High-Pass, Band-Pass)
-  - Calcul SNR pentru RAW și FILTERED
-  - Noise gate și calibrare automată
-  - Comunicare WebSocket cu backend-ul
+- **Features**:
+  - Audio capture at 16kHz
+  - FFT analysis with 9 frequency bands
+  - Real-time filtering (Low-Pass, High-Pass, Band-Pass)
+  - SNR calculation for RAW and FILTERED signals
+  - Noise gate and automatic calibration
+  - WebSocket communication with backend
 
 ### Backend Server (`server/`)
 - **Framework**: FastAPI (Python)
-- **Funcționalități**:
-  - WebSocket server pentru ESP32 și Dashboard
-  - Broadcast în timp real către toate dashboard-urile
-  - Management conexiuni
-  - REST API pentru informații sistem
-  - Logging structurat
+- **Features**:
+  - WebSocket server for ESP32 and Dashboard
+  - Real-time broadcast to all dashboards
+  - Connection management
+  - REST API for system information
+  - Structured logging
 
 ### Frontend Dashboard (`client/`)
 - **Framework**: React + TypeScript + Vite
 - **UI**: Tailwind CSS
-- **Funcționalități**:
-  - Visualizări în timp real (waveform, spectrogram)
-  - Control filtre audio (cutoff frequencies, voice boost)
-  - Metrici calitate semnal (SNR)
-  - Log măsurători
-  - Status conexiuni (Dashboard & ESP32)
+- **Features**:
+  - Real-time visualizations (waveform, spectrogram)
+  - Audio filter controls (cutoff frequencies, voice boost)
+  - Signal quality metrics (SNR)
+  - Measurement log
+  - Connection status (Dashboard & ESP32)
 
-## 🚀 Rulare cu Docker
+## 🚀 Running with Docker
 
-### Prerequisituri
+### Prerequisites
 - Docker
 - Docker Compose
 
-### Rulare completă
+### Full Setup
 
 ```bash
-# Clonează repository-ul
+# Clone the repository
 git clone <repository-url>
 cd psad-project
 
-# Rulează toate serviciile
+# Run all services
 docker-compose up -d
 
-# Verifică statusul
+# Check status
 docker-compose ps
 
-# Vezi logurile
+# View logs
 docker-compose logs -f
 ```
 
-### Accesare
+### Access
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000/api
 - **Backend Health**: http://localhost:8000/api/health
 - **Backend WebSocket**: ws://localhost:8000/ws (ESP32)
 - **Dashboard WebSocket**: ws://localhost:8000/ws-dashboard
 
-### Oprire
+### Stop
 ```bash
 docker-compose down
 ```
 
-## 🔧 Configurare Manuală
+## 🔧 Manual Configuration
 
 ### Backend (FastAPI)
 
@@ -124,7 +124,7 @@ docker-compose down
 cd server
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# sau
+# or
 venv\Scripts\activate  # Windows
 
 pip install -r requirements.txt
@@ -141,55 +141,55 @@ npm run dev
 
 ### ESP32
 
-1. Deschide `arduino/microphone_websocket.ino` în Arduino IDE
-2. Instalează bibliotecile necesare:
+1. Open `arduino/microphone_websocket.ino` in Arduino IDE
+2. Install required libraries:
    - `WiFi` (built-in)
-   - `WebSocketsClient` (de la Links2004)
-3. Configurează WiFi credentials în cod
-4. Configurează WebSocket host/port
-5. Upload la ESP32
+   - `WebSocketsClient` (from Links2004)
+3. Configure WiFi credentials in code
+4. Configure WebSocket host/port
+5. Upload to ESP32
 
-## 📊 Date și Metrici
+## 📊 Data and Metrics
 
-### Date trimise de ESP32
-- `volume`: Amplitudine RAW (0-100%)
-- `volumeFiltered`: Amplitudine filtrată (0-100%)
-- `peakToPeak`: Vârf la vârf (ADC units)
-- `bands`: Array cu 9 benzi FFT (RAW)
-- `bandsFiltered`: Array cu 9 benzi FFT (FILTERED)
+### Data sent by ESP32
+- `volume`: RAW amplitude (0-100%)
+- `volumeFiltered`: Filtered amplitude (0-100%)
+- `peakToPeak`: Peak-to-peak (ADC units)
+- `bands`: Array with 9 FFT bands (RAW)
+- `bandsFiltered`: Array with 9 FFT bands (FILTERED)
 - `snrRaw`: Signal-to-Noise Ratio RAW (dB)
 - `snrFiltered`: Signal-to-Noise Ratio FILTERED (dB)
-- `min`, `max`, `avg`: Valori ADC
+- `min`, `max`, `avg`: ADC values
 
-### Filtre disponibile
-- **Low-Pass**: Elimină frecvențe peste cutoff
-- **High-Pass**: Elimină frecvențe sub cutoff
-- **Band-Pass**: Păstrează frecvențe între 2 cutoff-uri
-- **Voice Boost**: Amplificare pentru benzile vocale (500Hz-2500Hz)
+### Available Filters
+- **Low-Pass**: Removes frequencies above cutoff
+- **High-Pass**: Removes frequencies below cutoff
+- **Band-Pass**: Keeps frequencies between 2 cutoffs
+- **Voice Boost**: Amplification for vocal bands (500Hz-2500Hz)
 
-## 🛠️ Tehnologii
+## 🛠️ Technologies
 
-- **ESP32**: Microcontroller cu WiFi
-- **FastAPI**: Backend Python modern
-- **React + TypeScript**: Frontend reactiv
-- **WebSocket**: Comunicare bidirecțională în timp real
-- **Tailwind CSS**: Styling modern
-- **Vite**: Build tool rapid pentru frontend
-- **Docker**: Containerizare și deployment
+- **ESP32**: WiFi-enabled microcontroller
+- **FastAPI**: Modern Python backend
+- **React + TypeScript**: Reactive frontend
+- **WebSocket**: Bidirectional real-time communication
+- **Tailwind CSS**: Modern styling
+- **Vite**: Fast build tool for frontend
+- **Docker**: Containerization and deployment
 
-## 📝 Structură Proiect
+## 📝 Project Structure
 
 ```
 psad-project/
-├── arduino/              # Firmware ESP32
+├── arduino/              # ESP32 Firmware
 │   └── microphone_websocket.ino
-├── server/               # Backend FastAPI
+├── server/               # FastAPI Backend
 │   ├── app.py
 │   ├── routes/          # API & WebSocket routes
 │   ├── services/        # Business logic
 │   ├── config/          # Configuration
 │   └── requirements.txt
-├── client/              # Frontend React
+├── client/              # React Frontend
 │   ├── src/
 │   │   ├── components/  # React components
 │   │   ├── hooks/      # Custom hooks
@@ -201,45 +201,45 @@ psad-project/
 └── README.md
 ```
 
-## 🔐 Variabile de Mediu
+## 🔐 Environment Variables
 
 ### Backend
-Nu necesită variabile de mediu (configurare în cod)
+No environment variables required (configured in code)
 
 ### Frontend
-Creează `.env` în `client/`:
+Create `.env` in `client/`:
 ```env
 VITE_API_URL_FASTAPI=wss://your-backend-url.com
 ```
 
-## 📈 Performanță
+## 📈 Performance
 
 - **Sample Rate**: 16kHz
 - **FFT Resolution**: 128 samples (~125Hz per bin)
-- **Update Rate**: 350ms (configurabil)
+- **Update Rate**: 350ms (configurable)
 - **Frequency Range**: 0-8kHz
-- **Bands**: 9 benzi optimizate pentru voce umană
+- **Bands**: 9 bands optimized for human voice
 
 ## 🐛 Troubleshooting
 
-### ESP32 nu se conectează
-- Verifică credentials WiFi
-- Verifică WebSocket host/port
-- Verifică că backend-ul rulează
+### ESP32 not connecting
+- Check WiFi credentials
+- Check WebSocket host/port
+- Verify backend is running
 
-### Frontend nu primește date
-- Verifică conexiunea WebSocket în browser console
-- Verifică că ESP32 trimite date
-- Verifică CORS settings în backend
+### Frontend not receiving data
+- Check WebSocket connection in browser console
+- Verify ESP32 is sending data
+- Check CORS settings in backend
 
 ### Docker issues
-- Verifică că porturile 3000 și 8000 sunt libere
-- Verifică logurile: `docker-compose logs`
+- Verify ports 3000 and 8000 are available
+- Check logs: `docker-compose logs`
 
-## 📄 Licență
+## 📄 License
 
-Vezi `LICENSE` pentru detalii.
+See `LICENSE` for details.
 
-## 👤 Autor
+## 👤 Author
 
 Cristi Miloiu

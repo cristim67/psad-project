@@ -38,7 +38,7 @@ function getSNRStatus(snr: number): {
 }
 
 function getSNRBarWidth(snr: number): number {
-  // Normalizează SNR la 0-100% pentru bară
+  // Normalize SNR to 0-100% for bar
   // SNR poate fi negativ până la ~40-50 dB
   const minSNR = -10;
   const maxSNR = 50;

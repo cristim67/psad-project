@@ -17,7 +17,7 @@ interface FilterControlsProps {
 export interface FilterSettings {
   filterType: string;
   cutoffFreq: number;
-  cutoffFreqHigh?: number; // Opțional, doar pentru bandpass
+  cutoffFreqHigh?: number; // Optional, only for bandpass
   voiceBoost: number;
 }
 
@@ -40,17 +40,17 @@ export function FilterControls({
     { value: "highpass", label: "High-Pass" },
   ];
 
-  // Previne ajustarea automată a cutoffFreqHigh când se schimbă cutoffFreq
+  // Prevent automatic adjustment of cutoffFreqHigh when cutoffFreq changes
   useEffect(() => {
     if (
       settings.filterType === "bandpass" &&
       settings.cutoffFreqHigh &&
       settings.cutoffFreqHigh < settings.cutoffFreq + 100
     ) {
-      // Doar dacă devine invalid, ajustează-l, dar nu când se schimbă cutoffFreq
-      // Această verificare se face doar la schimbarea filterType sau la inițializare
+      // Only if it becomes invalid, adjust it, but not when cutoffFreq changes
+      // This check is only done when filterType changes or on initialization
     }
-  }, [settings.filterType]); // Doar când se schimbă tipul de filtru
+  }, [settings.filterType]); // Only when filter type changes
 
   const handleReset = () => {
     const resetSettings = {

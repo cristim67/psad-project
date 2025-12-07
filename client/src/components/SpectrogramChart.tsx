@@ -10,7 +10,7 @@ interface SpectrogramChartProps {
 const NUM_BANDS = 9;
 const spectrogramWidth = 80;
 
-// Cache pentru culori - reduce calculul repetat
+// Color cache - reduces repeated calculation
 const colorCache = new Map<string, string>();
 
 function getBandColor(value: number, isRaw: boolean): string {
@@ -67,7 +67,7 @@ function getBandColor(value: number, isRaw: boolean): string {
     }
   }
 
-  // Cache doar primele 1000 culori pentru a nu umple memoria
+  // Cache only first 1000 colors to avoid filling memory
   if (colorCache.size < 1000) {
     colorCache.set(cacheKey, color);
   }
@@ -86,7 +86,7 @@ export function SpectrogramChart({
   const lastHistoryRef = useRef<number[][]>([]);
 
   useEffect(() => {
-    // Skip dacă istoricul nu s-a schimbat
+    // Skip if history hasn't changed
     if (
       history.length === lastHistoryRef.current.length &&
       history.length > 0 &&
@@ -104,7 +104,7 @@ export function SpectrogramChart({
       cancelAnimationFrame(animationFrameRef.current);
     }
 
-    // Folosește requestAnimationFrame pentru smooth rendering
+    // Use requestAnimationFrame for smooth rendering
     animationFrameRef.current = requestAnimationFrame(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;

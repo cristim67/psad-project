@@ -1,4 +1,4 @@
-"""DTOs și scheme pentru date"""
+"""DTOs and schemas for data"""
 from datetime import datetime
 from typing import Optional
 
@@ -16,7 +16,7 @@ class SensorData(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    """Schema pentru health check"""
+    """Schema for health check"""
     status: str
     timestamp: str
     active_connections: int
@@ -24,13 +24,13 @@ class HealthResponse(BaseModel):
 
 
 class LatestDataResponse(BaseModel):
-    """Schema pentru ultimele date"""
+    """Schema for latest data"""
     count: int
     data: list[dict]
 
 
 class StatsResponse(BaseModel):
-    """Schema pentru statistici"""
+    """Schema for statistics"""
     total_records: int
     db_size_kb: float
     latest_data_count: int
@@ -38,7 +38,7 @@ class StatsResponse(BaseModel):
 
 
 class ApiInfoResponse(BaseModel):
-    """Schema pentru info API"""
+    """Schema for API info"""
     message: str
     websocket: str
     dashboard: str
