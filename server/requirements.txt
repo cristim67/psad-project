@@ -1,8 +1,6 @@
 fastapi
 uvicorn[standard]
 websockets
-aiosqlite
 colorlog
-pyaudio
 numpy
 aiohttp

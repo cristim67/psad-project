@@ -42,7 +42,5 @@ class ApiInfoResponse(BaseModel):
     message: str
     websocket: str
     dashboard: str
-    static_files: str
-    dashboard_url: str
     status: str
 

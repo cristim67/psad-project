@@ -1,10 +1,5 @@
 """API routes"""
-from pathlib import Path
-
-from config.settings import DB_PATH, STATIC_DIR
-from database.db import get_total_records
 from fastapi import APIRouter
-from fastapi.responses import FileResponse
 from models.schemas import (
     ApiInfoResponse,
     HealthResponse,
@@ -19,16 +14,11 @@ router = APIRouter()
 
 @router.get("/", response_model=ApiInfoResponse)
 async def home():
-    """Serve dashboard HTML or return API info"""
-    dashboard_path = STATIC_DIR / "index.html"
-    if dashboard_path.exists():
-        return FileResponse(dashboard_path)
+    """API info endpoint"""
     return {
         "message": "IoT WebSocket Server",
         "websocket": "/ws",
         "dashboard": "/ws-dashboard",
-        "static_files": "/static",
-        "dashboard_url": "/static/index.html",
         "status": "running"
     }
 
@@ -57,17 +47,11 @@ async def get_latest_data_route(count: int = 10):
 
 @router.get("/data/stats", response_model=StatsResponse)
 async def get_stats():
-    """Statistics about saved data"""
-    try:
-        total = await get_total_records()
-        db_size = DB_PATH.stat().st_size if DB_PATH.exists() else 0
-        
-        return {
-            "total_records": total,
-            "db_size_kb": round(db_size / 1024, 2),
-            "latest_data_count": get_latest_data_count(),
-            "active_dashboard_connections": get_connection_count()
-        }
-    except Exception as e:
-        return {"error": str(e)}
+    """Statistics about current data"""
+    return {
+        "total_records": 0,
+        "db_size_kb": 0,
+        "latest_data_count": get_latest_data_count(),
+        "active_dashboard_connections": get_connection_count()
+    }
 

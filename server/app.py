@@ -1,10 +1,8 @@
 """Main FastAPI application"""
 
-from config.settings import STATIC_DIR
 from context.lifespan import lifespan
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from middleware.logging import log_requests
 from routes import api_router, websocket_router
 
@@ -25,10 +23,6 @@ app.add_middleware(
 
 # Request logging middleware
 app.middleware("http")(log_requests)
-
-# Mount static files
-STATIC_DIR.mkdir(exist_ok=True)
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Include routers
 app.include_router(api_router)
