@@ -74,7 +74,7 @@ Real-time audio analysis platform using ESP32, FastAPI, and React. The system ca
   - REST API for system information
   - Structured logging
 
-! [Backend Swagger UI](https://github.com/cristim67/psad-project/blob/main/images/backend-swagger.png)
+![Backend Swagger UI](https://github.com/cristim67/psad-project/blob/main/images/backend-swagger.png)
 
 ```bash
 http://localhost:8000/docs

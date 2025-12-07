@@ -454,9 +454,10 @@ void calibrateNoiseFloor(float *currentBands)
             }
             calibrated = true;
             Serial.println("✅ Calibration complete!");
-            Serial.printf("   Noise floor: [%.0f, %.0f, %.0f, %.0f, %.0f, %.0f, %.0f, %.0f, %.0f]\n",
+            Serial.printf("   Noise floor: [%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f]\n",
                           noiseFloor[0], noiseFloor[1], noiseFloor[2], noiseFloor[3],
                           noiseFloor[4], noiseFloor[5], noiseFloor[6], noiseFloor[7], noiseFloor[8]);
+            Serial.printf("   Calibration samples: %d/%d\n", calibrationSamples, CALIBRATION_COUNT);
         }
     }
 }
@@ -698,6 +699,11 @@ void loop()
     if (!calibrated)
     {
         calibrateNoiseFloor(bands);
+        // Log calibration progress every 5 samples
+        if (calibrationSamples % 5 == 0 && calibrationSamples > 0)
+        {
+            Serial.printf("⏳ Calibrating... %d/%d samples\n", calibrationSamples, CALIBRATION_COUNT);
+        }
     }
 
     applyBandSmoothing(bands, bands);
@@ -709,36 +715,98 @@ void loop()
     applyNoiseGateToBands(bandsFiltered, bandsFiltered);
 
     // ========== SNR CALCULATION ==========
-    // Calculate SNR only if calibrated (otherwise 0)
-    float snrRaw = 0;
-    float snrFiltered = 0;
+    // Calculate SNR - can be negative if signal is weaker than noise
+    float snrRaw = 0.0f;
+    float snrFiltered = 0.0f;
 
     if (calibrated)
     {
         // SNR for RAW: ratio between signal energy and noise floor
-        float signalEnergyRaw = 0;
-        float noiseEnergyRaw = 0;
+        float signalEnergyRaw = 0.0f;
+        float noiseEnergyRaw = 0.0f;
         for (int i = 0; i < NUM_BANDS; i++)
         {
             signalEnergyRaw += bands[i] * bands[i];
             noiseEnergyRaw += noiseFloor[i] * noiseFloor[i];
         }
-        if (noiseEnergyRaw > 0 && signalEnergyRaw > noiseEnergyRaw)
+
+        // Calculate SNR even if signal is weaker than noise (will be negative)
+        if (noiseEnergyRaw > 0.0001f) // Avoid division by zero
         {
-            snrRaw = 10.0f * log10f(signalEnergyRaw / noiseEnergyRaw);
+            float ratio = signalEnergyRaw / noiseEnergyRaw;
+            // Use a very small threshold to allow negative SNR values
+            if (ratio > 0.00001f) // Minimum ratio to avoid log(0)
+            {
+                snrRaw = 10.0f * log10f(ratio);
+            }
+            else
+            {
+                // Signal is much weaker than noise - very negative SNR
+                snrRaw = -60.0f;
+            }
         }
 
         // SNR for FILTERED: ratio between filtered signal energy and noise floor
-        float signalEnergyFiltered = 0;
-        float noiseEnergyFiltered = 0;
+        float signalEnergyFiltered = 0.0f;
+        float noiseEnergyFiltered = 0.0f;
         for (int i = 0; i < NUM_BANDS; i++)
         {
             signalEnergyFiltered += bandsFiltered[i] * bandsFiltered[i];
             noiseEnergyFiltered += noiseFloor[i] * noiseFloor[i];
         }
-        if (noiseEnergyFiltered > 0 && signalEnergyFiltered > noiseEnergyFiltered)
+
+        // Calculate SNR even if signal is weaker than noise (will be negative)
+        if (noiseEnergyFiltered > 0.0001f) // Avoid division by zero
         {
-            snrFiltered = 10.0f * log10f(signalEnergyFiltered / noiseEnergyFiltered);
+            float ratio = signalEnergyFiltered / noiseEnergyFiltered;
+            // Use a very small threshold to allow negative SNR values
+            if (ratio > 0.00001f) // Minimum ratio to avoid log(0)
+            {
+                snrFiltered = 10.0f * log10f(ratio);
+            }
+            else
+            {
+                // Signal is much weaker than noise - very negative SNR
+                snrFiltered = -60.0f;
+            }
+        }
+    }
+    else
+    {
+        // Not calibrated yet - use a simple estimate based on average band energy
+        // During calibration, we can't accurately calculate SNR, but we can give an estimate
+        float avgBandEnergyRaw = 0.0f;
+        float avgBandEnergyFiltered = 0.0f;
+
+        for (int i = 0; i < NUM_BANDS; i++)
+        {
+            avgBandEnergyRaw += bands[i];
+            avgBandEnergyFiltered += bandsFiltered[i];
+        }
+        avgBandEnergyRaw /= NUM_BANDS;
+        avgBandEnergyFiltered /= NUM_BANDS;
+
+        // Simple SNR estimate: if average energy is above a threshold, assume positive SNR
+        // This is just a rough estimate during calibration
+        if (avgBandEnergyRaw > 1.0f)
+        {
+            // Rough estimate: assume noise floor is around 1-2, signal is current average
+            float estimatedNoise = 2.0f;
+            float ratio = avgBandEnergyRaw / estimatedNoise;
+            if (ratio > 0.1f)
+            {
+                snrRaw = 10.0f * log10f(ratio);
+            }
+        }
+
+        if (avgBandEnergyFiltered > 1.0f)
+        {
+            float estimatedNoise = 2.0f;
+            float ratio = avgBandEnergyFiltered / estimatedNoise;
+            if (ratio > 0.1f)
+            {
+                snrFiltered = 10.0f * log10f(ratio);
+            }
         }
     }
 
