@@ -55,7 +55,7 @@ Real-time audio analysis platform using ESP32, FastAPI, and React. The system ca
 ### ESP32 Firmware (`arduino/microphone_websocket.ino`)
 - **Hardware Setup**: ESP32 + Pre-Amplifier + Electret Microphone
 
-![Hardware Setup](https://github.com/cristimiloiu/psad-project/blob/main/docs/images/hardware-setup.png)
+![Hardware Setup](https://github.com/cristimiloiu/psad-project/blob/main/docs/images/breadboard.jpeg)
 
 - **Features**:
   - Audio capture at 16kHz
